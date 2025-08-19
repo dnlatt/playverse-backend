@@ -1,0 +1,165 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model product_types {
+  product_type_id Int      @id @default(autoincrement())
+  name            String   @db.VarChar(50)
+  brand_id        Int?
+  brand           brands?  @relation(fields: [brand_id], references: [brand_id], onDelete: SetNull)
+  products        products[]
+
+  @@map("product_types")
+}
+
+model brands {
+  brand_id      Int             @id @default(autoincrement())
+  name          String          @db.VarChar(100)
+  slug          String          @unique @db.VarChar(100)
+  product_types product_types[]
+  products      products[]      @relation("BrandProducts")
+
+  @@map("brands")
+}
+
+model platforms {
+  platform_id Int        @id @default(autoincrement())
+  name        String     @db.VarChar(50)
+  slug        String     @unique @db.VarChar(100) 
+  products    products[]
+
+  @@map("platforms")
+}
+
+model products {
+  product_id      Int              @id @default(autoincrement())
+  product_type_id Int
+  brand_id        Int?
+  platform_id     Int?
+  name            String           @db.VarChar(150)
+  sku             String           @unique @db.VarChar(50)
+  slug            String         @unique @db.VarChar(150)
+  price           Decimal          @db.Decimal(10, 2)
+  stock           Int              @default(0)
+  released_date   DateTime?
+  status          String           @default("instock") @db.VarChar(20)
+  
+  product_type    product_types    @relation(fields: [product_type_id], references: [product_type_id], onDelete: Cascade)
+  brand           brands?          @relation("BrandProducts", fields: [brand_id], references: [brand_id], onDelete: SetNull)
+  platform        platforms?       @relation(fields: [platform_id], references: [platform_id], onDelete: SetNull)
+  product_images  product_images[]
+  product_tags    product_tags[]
+  cart_items      cart_items[]
+  order_items     order_items[]
+
+  @@map("products")
+}
+
+model product_images {
+  image_id   Int      @id @default(autoincrement())
+  product_id Int
+  image_url  String
+
+  product products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+model tags {
+  tag_id       Int           @id @default(autoincrement())
+  name         String        @db.VarChar(50)
+  product_tags product_tags[]
+
+  @@map("tags")
+}
+
+model product_tags {
+  product_id Int
+  tag_id     Int
+
+  product products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  tag     tags     @relation(fields: [tag_id], references: [tag_id], onDelete: Cascade)
+
+  @@id([product_id, tag_id])
+  @@map("product_tags")
+}
+
+model roles {
+  role_id Int      @id @default(autoincrement())
+  name    String   @db.VarChar(50)
+  users   users[]
+
+  @@map("roles")
+}
+
+model users {
+  user_id       Int         @id @default(autoincrement())
+  name          String?     @db.VarChar(100)
+  email         String      @unique @db.VarChar(150)
+  password_hash String      @db.Text
+  role_id       Int
+  address       String?     @db.VarChar(255)
+  phone_number  String?     @db.VarChar(20)
+  created_at    DateTime    @default(now())
+
+  role          roles       @relation(fields: [role_id], references: [role_id], onDelete: Restrict)
+  carts         carts[]
+  orders        orders[]
+
+  @@map("users")
+}
+
+model carts {
+  cart_id    Int          @id @default(autoincrement())
+  user_id    Int
+  created_at DateTime     @default(now())
+
+  user       users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  cart_items cart_items[]
+
+  @@map("carts")
+}
+
+model cart_items {
+  cart_item_id Int      @id @default(autoincrement())
+  cart_id      Int
+  product_id   Int
+  quantity     Int
+  price        Decimal  @db.Decimal(10, 2)
+
+  cart    carts    @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade)
+  product products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@map("cart_items")
+}
+
+model orders {
+  order_id   Int       @id @default(autoincrement())
+  user_id    Int
+  order_date DateTime  @default(now())
+  status     String    @default("pending") @db.VarChar(20)
+  total      Decimal   @db.Decimal(10, 2)
+
+  user        users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  order_items order_items[]
+
+  @@map("orders")
+}
+
+model order_items {
+  order_item_id Int      @id @default(autoincrement())
+  order_id      Int
+  product_id    Int
+  quantity      Int
+  price         Decimal  @db.Decimal(10, 2)
+
+  order   orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@map("order_items")
+}
